@@ -68,7 +68,6 @@ x:=(input "type a number: ")
 
 ## running
 
-just head over to https://parserfun.herokuapp.com/ and try typing some of the samples shown above!
 just head over to https://parserfun.herokuapp.com/ and try typing some of the samples shown above,
 the script will not run, but instead will be transpiled to the equivalent python code, then you can just copy-paste it to
 a python file and run it.
