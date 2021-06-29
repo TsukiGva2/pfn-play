@@ -1,2 +1,2 @@
-web: pfn-web
+web: pfn-play
 
