@@ -26,6 +26,7 @@
             </form>
             <script>
                 var noprelude = false
+                var vim = "default"
                 var editor = CodeMirror.fromTextArea(document.getElementById("c"), {
                     lineNumbers: true,
                     theme: "3024-night"
@@ -38,7 +39,9 @@
                     },
                 });
                 function vimmode() {
-                    editor.setOption("keyMap", "vim")
+                    vim = vim == "default" ? "vim" : "default"
+                    editor.setOption("keyMap", vim)
+                    document.getElementById("vimbutton").innerHTML = "vim mode: " + (vim == "vim" ? "On" : "Off")
                 }
                 function noprelude_toggle() {
                     noprelude = !noprelude
@@ -46,7 +49,7 @@
                     document.getElementById("noprelude").innerHTML = (noprelude ? "do not " : "") + "load prelude.pfn"
                 }
             </script>
-            <button type="button" class="btn btn-dark form-inline" onclick="vimmode()">toggle vim mode</button>
+            <button type="button" id="vimbutton" class="btn btn-dark form-inline" onclick="vimmode()">vim mode: Off</button>
             <button type="button" id="noprelude" class="btn btn-dark form-inline" onclick="noprelude_toggle()">do not load prelude.pfn</button>
         </div>
         <script src="/js/bootstrap.min.js"></script>
