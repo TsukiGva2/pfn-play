@@ -1,3 +1,3 @@
-# github.com/TsukiGva2/pfn v0.0.0-20210629011438-95bb34c3f661
+# github.com/TsukiGva2/pfn v0.0.0-20210629125230-1a891330e6c1
 ## explicit
 github.com/TsukiGva2/pfn

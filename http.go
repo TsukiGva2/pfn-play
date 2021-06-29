@@ -19,6 +19,15 @@ func main() {
 }
 
 func runpfn(wr http.ResponseWriter, r *http.Request) {
-	res := pfn.Run(r.FormValue("code"), false).Output
+	query := r.URL.Query()
+
+	noprelude := false
+
+	np, exists := query["noprelude"]
+	if exists && np[0] == "true" {
+		noprelude = true
+	}
+
+	res := pfn.Run(r.FormValue("code"), false, noprelude).Output
 	wr.Write([]byte(res))
 }

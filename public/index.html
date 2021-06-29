@@ -14,7 +14,7 @@
                 <hr />
             </div>
 
-            <form action="/execute" method="POST">
+            <form action="/execute" method="POST" id="fm">
                 <div class="form-group">
                     <textarea class="form-control" id="c" name="code" cols="30" rows="10"></textarea>
                 </div>
@@ -25,6 +25,7 @@
                 </div>
             </form>
             <script>
+                var noprelude = false
                 var editor = CodeMirror.fromTextArea(document.getElementById("c"), {
                     lineNumbers: true,
                     theme: "3024-night"
@@ -39,8 +40,14 @@
                 function vimmode() {
                     editor.setOption("keyMap", "vim")
                 }
+                function noprelude_toggle() {
+                    noprelude = !noprelude
+                    document.getElementById("fm").action = `/execute?noprelude=${noprelude}`
+                    document.getElementById("noprelude").innerHTML = (noprelude ? "do not " : "") + "load prelude.pfn"
+                }
             </script>
-            <button type="button" class="btn btn-dark" onclick="vimmode()">toggle vim mode</button>
+            <button type="button" class="btn btn-dark form-inline" onclick="vimmode()">toggle vim mode</button>
+            <button type="button" id="noprelude" class="btn btn-dark form-inline" onclick="noprelude_toggle()">do not load prelude.pfn</button>
         </div>
         <script src="/js/bootstrap.min.js"></script>
     </body>
