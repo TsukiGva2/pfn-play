@@ -1,4 +1,4 @@
-module pfn-web
+module pfn-play
 
 go 1.16
 
