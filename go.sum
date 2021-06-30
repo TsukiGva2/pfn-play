@@ -6,3 +6,5 @@ github.com/TsukiGva2/pfn v0.0.0-20210629125230-1a891330e6c1 h1:eQSq5xnRq06jxrnqP
 github.com/TsukiGva2/pfn v0.0.0-20210629125230-1a891330e6c1/go.mod h1:Ce3SO9dG34piMfBu8jaVJeFWEnnpDqNQ3NnGZaL6rCk=
 github.com/TsukiGva2/pfn v0.0.0-20210630204734-18c0a8ad1d01 h1:0IhNbaHZJhvAEZoBRPcg7u6N2KGJe6v5v/TlQrfZe9U=
 github.com/TsukiGva2/pfn v0.0.0-20210630204734-18c0a8ad1d01/go.mod h1:Ce3SO9dG34piMfBu8jaVJeFWEnnpDqNQ3NnGZaL6rCk=
+github.com/TsukiGva2/pfn v0.0.0-20210630210501-f1a647f61c0f h1:o/LWBDwLgSq9fr+KiSY9pPcmqdN2VwkiLIDm2LJxZgw=
+github.com/TsukiGva2/pfn v0.0.0-20210630210501-f1a647f61c0f/go.mod h1:Ce3SO9dG34piMfBu8jaVJeFWEnnpDqNQ3NnGZaL6rCk=
