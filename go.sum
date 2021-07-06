@@ -8,3 +8,9 @@ github.com/TsukiGva2/pfn v0.0.0-20210630204734-18c0a8ad1d01 h1:0IhNbaHZJhvAEZoBR
 github.com/TsukiGva2/pfn v0.0.0-20210630204734-18c0a8ad1d01/go.mod h1:Ce3SO9dG34piMfBu8jaVJeFWEnnpDqNQ3NnGZaL6rCk=
 github.com/TsukiGva2/pfn v0.0.0-20210630210501-f1a647f61c0f h1:o/LWBDwLgSq9fr+KiSY9pPcmqdN2VwkiLIDm2LJxZgw=
 github.com/TsukiGva2/pfn v0.0.0-20210630210501-f1a647f61c0f/go.mod h1:Ce3SO9dG34piMfBu8jaVJeFWEnnpDqNQ3NnGZaL6rCk=
+github.com/TsukiGva2/pfn v0.0.0-20210703155044-3aee475de218 h1:cPNYFeORNCiM64Xf0ETPv88H5jUPi+6e+rUVqqdaR54=
+github.com/TsukiGva2/pfn v0.0.0-20210703155044-3aee475de218/go.mod h1:Ce3SO9dG34piMfBu8jaVJeFWEnnpDqNQ3NnGZaL6rCk=
+github.com/TsukiGva2/pfn v0.0.0-20210703162859-9ec2d34a9c8e h1:8jbjj2bkpfTJs2P7/rwuTQtIefpxho1XEY1hmYeh2Hs=
+github.com/TsukiGva2/pfn v0.0.0-20210703162859-9ec2d34a9c8e/go.mod h1:Ce3SO9dG34piMfBu8jaVJeFWEnnpDqNQ3NnGZaL6rCk=
+github.com/TsukiGva2/pfn v0.0.0-20210706221203-b49e54143789 h1:iyG+l29uqLQO5xFUkKG7swzTAUkMS/Ku2AWJ1so5b5w=
+github.com/TsukiGva2/pfn v0.0.0-20210706221203-b49e54143789/go.mod h1:Ce3SO9dG34piMfBu8jaVJeFWEnnpDqNQ3NnGZaL6rCk=

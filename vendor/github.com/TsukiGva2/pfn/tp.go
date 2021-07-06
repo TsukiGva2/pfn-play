@@ -3,6 +3,7 @@ package pfn
 import (
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 )
 
@@ -32,12 +33,31 @@ const ( // Atypes
 		you would see this on the function body:
 
 		if 0 != args[0]:
-			raise UnmatchedError()
+		raise UnmatchedError()
 
 		where '0' is of type tCompare.
+
+		tTypeAssert is for type assertions, ex:
+
+		.f(|<list>x|->(sum x))
+
+		in this example 'x' must be of type 'list'
+		the function body will look like this:
+
+		x = args[0]
+		if type(list) != type:
+			raise Exception(...)
+		if list != type(x):
+			raise UnmatchedError(...)
+
+		pretty weird, i know, the first if statement
+		might seem useless, but it just checks if list
+		is actually a type, to prevent nonsense like
+		0 != type(x).
 	*/
 	tNormal = iota
 	tCompare
+	tTypeAssert
 )
 
 type argument struct {
@@ -45,8 +65,17 @@ type argument struct {
 	atype int
 }
 
-var ident int = 0
+var ident int
 var fns = make(map[string]([]string))
+
+var keywords = map[string]int{
+	"end":   0,
+	"when":  1,
+	"while": 2,
+	"loop":  3,
+	"break": 4,
+	"let":   5,
+}
 
 type parserFn func() (string, error)
 
@@ -74,7 +103,7 @@ func (tp *Transpiler) start() {
 	pfncall += "	broke=False\n"
 	pfncall += "	for f in p:\n"
 	pfncall += "		try:\n"
-	pfncall += "			result=f(*args)\n"
+	pfncall += "			result=eval(f+'(*'+str(args)+')')\n"
 	pfncall += "		except (UnmatchedError, ArgcountError):\n"
 	pfncall += "			continue\n"
 	pfncall += "		broke=True\n\n"
@@ -90,17 +119,23 @@ func (tp *Transpiler) start() {
 }
 
 func (tp *Transpiler) run() {
-	tp.Output += tp.code(cEOF, "")
+	out, err := tp.code(cEOF, "")
+
+	if err != nil {
+		panic(err)
+	}
+
+	tp.Output += out
 }
 
-func (tp *Transpiler) code(end int, alt string, extra ...parserFn) string {
+func (tp *Transpiler) code(end int, alt string, extra ...parserFn) (string, error) {
 	// (fn | var | expr)*
 
 	var pfns []parserFn
 	var output string
 
 	pfns = append(pfns, extra...)
-	pfns = append(pfns, tp.py, tp.out, tp.fn, tp.loop, tp.when, tp.variable, tp.expr)
+	pfns = append(pfns, tp.py, tp.out, tp.fn, tp.loop, tp.when, tp.variable, tp.expr, tp.class)
 
 	for {
 		tok := tp.ctoken()
@@ -112,7 +147,7 @@ func (tp *Transpiler) code(end int, alt string, extra ...parserFn) string {
 		res, err := tp.rfwo(pfns)
 
 		if err != nil {
-			panic(err)
+			return "", err
 		}
 
 		lines := strings.Split(res, "\n")
@@ -128,7 +163,7 @@ func (tp *Transpiler) code(end int, alt string, extra ...parserFn) string {
 		tp.advance(1)
 	}
 
-	return output
+	return output, nil
 }
 
 // parsing functions
@@ -182,7 +217,32 @@ func (tp *Transpiler) fn() (string, error) {
 
 	if tok.tokTy != cBOr {
 		for {
-			if tok.tokTy != cIdentifier {
+			if tok.tokTy == cLt {
+				tp.advance(1)
+				tok = tp.ctoken()
+
+				expr, err := tp.expr()
+
+				if err != nil {
+					return "", errors.New("not a function: invalid type assertion: couldn't parse type expression")
+				}
+
+				tp.advance(1)
+				tok = tp.ctoken()
+
+				if tok.tokTy != cGt {
+					return "", errors.New("not a function: invalid type assertion")
+				}
+
+				tp.advance(1)
+				tok = tp.ctoken()
+
+				if tok.tokTy != cIdentifier {
+					return "", errors.New("not a function: invalid type assertion")
+				}
+
+				args = append(args, argument{tok.lexeme + "|" + expr, tTypeAssert})
+			} else if tok.tokTy != cIdentifier {
 				expr, err := tp.expr()
 
 				if err != nil {
@@ -230,13 +290,31 @@ func (tp *Transpiler) fn() (string, error) {
 			continue
 		}
 
+		if arg.atype == tTypeAssert {
+			exp := arg.expr
+			argname := exp[:strings.Index(exp, "|")]
+			texpr := exp[strings.Index(exp, "|")+1:]
+
+			code += fmt.Sprintf("\t%s = args[%d]\n", argname, i)
+
+			code += fmt.Sprintf("\tif type(%s) != type:\n\t\traise Exception('type assertion expression must be a valid type')\n", texpr)
+			code += fmt.Sprintf("\tif %s != type(args[%d]):\n\t\traise UnmatchedError('unmatched')\n", texpr, i)
+			continue
+		}
+
 		code += fmt.Sprintf("\tif %s != args[%d]:\n\t\traise UnmatchedError('unmatched')\n", arg.expr, i)
 	}
 
 	tp.advance(1)
 
 	ident++
-	code += tp.code(cRparen, "", tp.ret)
+	out, err := tp.code(cRparen, "", tp.ret)
+
+	if err != nil {
+		return "", err
+	}
+
+	code += out
 	ident--
 
 	if exists {
@@ -245,7 +323,6 @@ func (tp *Transpiler) fn() (string, error) {
 	}
 
 	fns[oldName] = []string{fmt.Sprintf("pfn_%s", fname)}
-
 	return code, nil
 }
 
@@ -453,12 +530,18 @@ func (tp *Transpiler) literal() (string, error) {
 	case cNumber:
 		break
 	case cString:
-		break
+		return "\"" + tok.literal.(string) + "\"", nil
 	case cIdentifier:
 		f, exists := fns[tok.lexeme]
 
 		if exists {
 			tok.lexeme = fmt.Sprintf("(lambda *args: __pfn_call([%s], args))", strings.Join(f, ","))
+			break
+		}
+
+		_, exists = keywords[tok.lexeme]
+		if exists {
+			return "", errors.New("keyword '" + tok.lexeme + "' is not a valid literal")
 		}
 	case cMinus:
 		tp.advance(1)
@@ -656,7 +739,14 @@ func (tp *Transpiler) call() (string, error) {
 	f, exists := fns[fname]
 
 	if exists {
-		output = fmt.Sprintf(prefix+"__pfn_call([%s], [%s])", strings.Join(f, ","), args)
+		list := ""
+		for i := range f {
+			list += "'" + f[i] + "'"
+			if i < len(f)-1 {
+				list += ","
+			}
+		}
+		output = fmt.Sprintf(prefix+"__pfn_call([%s], [%s])", list, args)
 		//output = fmt.Sprintf("broke=False\nfor f in [%v]:\n\ttry:\n\t\tf(%s)\n\texcept (UnmatchedError, ArgcountError):\n\t\tcontinue\n\tbroke=True\n\tbreak\n\nif not broke:\n\traise Exception('no matching function')\n", strings.Join(f, ","), args)
 
 		return output, nil
@@ -758,7 +848,10 @@ func (tp *Transpiler) when() (string, error) {
 	tp.advance(1)
 
 	ident++
-	code := tp.code(cEnd, "else", tp.ret)
+	code, err := tp.code(cEnd, "else", tp.ret)
+	if err != nil {
+		return "", err
+	}
 	ident--
 
 	output += code
@@ -774,7 +867,10 @@ func (tp *Transpiler) when() (string, error) {
 		output += ":\n"
 
 		ident++
-		code = tp.code(cEnd, "", tp.ret)
+		code, err = tp.code(cEnd, "", tp.ret)
+		if err != nil {
+			return "", err
+		}
 		ident--
 
 		output += code
@@ -819,7 +915,10 @@ func (tp *Transpiler) loop() (string, error) {
 	tp.advance(1)
 
 	ident++
-	code := tp.code(cEloop, "", tp.brk)
+	code, err := tp.code(cEloop, "", tp.brk)
+	if err != nil {
+		return "", err
+	}
 	ident--
 
 	tok = tp.ctoken()
@@ -935,11 +1034,15 @@ func (tp *Transpiler) let() (string, error) {
 
 	tp.advance(1)
 
-	code += tp.code(cEnd, "")
+	out, err := tp.code(cEnd, "", tp.ret)
+	if err != nil {
+		return "", err
+	}
+	code += out
 
 	code += "del " + varname
 	code += "\n"
-	return code,nil
+	return code, nil
 }
 
 func (tp *Transpiler) index() (string, error) {
@@ -982,6 +1085,82 @@ func (tp *Transpiler) index() (string, error) {
 	return output, nil
 }
 
+func (tp *Transpiler) class() (string, error) {
+	// "=" id "(" code ")"
+	var name string
+	var fields []string
+
+	tok := tp.ctoken()
+
+	if tok.tokTy != cEq {
+		return "", errors.New("not a class: no =")
+	}
+
+	tp.advance(1)
+	tok = tp.ctoken()
+
+	if tok.tokTy != cIdentifier {
+		return "", errors.New("not a class: no identifier")
+	}
+	name = tok.lexeme
+
+	tp.advance(1)
+	tok = tp.ctoken()
+
+	if tok.tokTy != cLparen {
+		return "", errors.New("not a class: no '('")
+	}
+
+	tp.advance(1)
+	tok = tp.ctoken()
+
+	for true {
+		if tok.tokTy == cRparen || tok.tokTy == cEOF {
+			break
+		}
+
+		if tok.tokTy != cIdentifier {
+			return "", errors.New("not a class: no identifier")
+		}
+
+		fields = append(fields, tok.lexeme)
+
+		tp.advance(1)
+		tok = tp.ctoken()
+	}
+
+	if tok.tokTy != cRparen {
+		return "", errors.New("not a class: unexpected EOF")
+	}
+
+	list := ""
+
+	for i := range fields {
+		list += fields[i]
+
+		if i < len(fields)-1 {
+			list += ","
+		}
+	}
+
+	output := "class " + name + ":\n"
+	ident++
+	output += strings.Repeat("\t", ident)
+	output += "def __init__(self," + list + "):\n"
+	ident++
+
+	for i := range fields {
+		output += strings.Repeat("\t", ident)
+		output += "self." + fields[i] + "=" + fields[i] + "\n"
+	}
+
+	ident -= 2
+
+	output += "\n"
+
+	return output, nil
+}
+
 // dangerous language constructs
 
 func (tp *Transpiler) out() (string, error) {
@@ -993,7 +1172,10 @@ func (tp *Transpiler) out() (string, error) {
 
 	tp.advance(1)
 
-	code := tp.code(cEnd, "")
+	code, err := tp.code(cEnd, "")
+	if err != nil {
+		return "", err
+	}
 
 	tp.Output = code + "\n" + tp.Output
 
@@ -1021,8 +1203,14 @@ func (tp Transpiler) ctoken() Token {
 func (tp Transpiler) err(where string, msg string) {
 	//if !haderror {
 	//haderror = true
-	fmt.Printf("had error on %s, line %d, col %d\n%s\n",
-		where, tp.ctoken().line+1, (tp.ctoken().col+1)/(tp.ctoken().line+1), msg)
+	tok := tp.ctoken()
+
+	heading := "========================================="
+	red := "\033[1;31m"
+	normal := "\033[0m"
+
+	log.Fatalf("had error on %s, line %d\n%s%s\n%s%s\n%s%s%s\n",
+		where, tok.line+1, red, heading, normal, msg, red, heading, normal)
 	//}
 }
 
@@ -1037,7 +1225,14 @@ func (tp *Transpiler) rfwo(fns []parserFn) (string, error) {
 
 	old := tp.current
 
-	var last error
+	/*
+		couldn't think of a better name, 'max' is used for
+		storing the parser function that has taken the most steps,
+		it is used for setting 'probableCause' later.
+	*/
+	var max uint
+	var probableCause string
+	var tokenAtErr string
 
 	for i := range fns {
 		res, err := fns[i]()
@@ -1046,10 +1241,16 @@ func (tp *Transpiler) rfwo(fns []parserFn) (string, error) {
 			return res, nil
 		}
 
-		last = err
+		steps := tp.current - old
+		if steps >= max {
+			max = steps
+			probableCause = err.Error()
+			tokenAtErr = tp.ctoken().lexeme
+		}
+
 		tp.current = old
 	}
 
-	tp.err("rfwo", "no matching pfn")
-	panic(last)
+	tp.err("rfwo", "no matching pfn for tokens '"+tp.ctoken().lexeme+"' through '"+tokenAtErr+"'\nprobably because of this error: "+probableCause)
+	return "", errors.New("no matching pfn")
 }
